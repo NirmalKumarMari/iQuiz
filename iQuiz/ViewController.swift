@@ -30,7 +30,6 @@ struct QuestionJSON: Codable {
     let answers: [String]
 }
 
-
 enum QuizMode {
     case topics
     case question
@@ -43,7 +42,8 @@ class ViewController: UITableViewController {
 
     let defaultQuizURL = "http://tednewardsandbox.site44.com/questions.json"
     let quizURLKey = "QuizURL"
-    
+
+
     let refreshIntervalKey = "RefreshInterval"
     var refreshTimer: Timer?
 
@@ -75,12 +75,17 @@ class ViewController: UITableViewController {
     var score = 0
     var tipShown = false
 
+
     override func viewDidLoad() {
         super.viewDidLoad()
         title = "iQuiz"
 
         if UserDefaults.standard.string(forKey: quizURLKey) == nil {
             UserDefaults.standard.set(defaultQuizURL, forKey: quizURLKey)
+        }
+
+        if UserDefaults.standard.object(forKey: refreshIntervalKey) == nil {
+            UserDefaults.standard.set(30.0, forKey: refreshIntervalKey)
         }
 
         navigationItem.leftBarButtonItem = UIBarButtonItem(
@@ -100,25 +105,13 @@ class ViewController: UITableViewController {
         setupGestures()
 
         fetchQuizzes()
-        
-        if UserDefaults.standard.object(forKey: refreshIntervalKey) == nil {
-            UserDefaults.standard.set(30.0, forKey: refreshIntervalKey)
-        }
-
         startAutoRefresh()
     }
 
-    func startAutoRefresh() {
+    deinit {
         refreshTimer?.invalidate()
-
-        let interval = UserDefaults.standard.double(forKey: refreshIntervalKey)
-        guard interval > 0 else { return }
-
-        refreshTimer = Timer.scheduledTimer(withTimeInterval: interval,
-                                            repeats: true) { [weak self] _ in
-            self?.fetchQuizzes()
-        }
     }
+
 
     func fetchQuizzes() {
         guard let urlString = UserDefaults.standard.string(forKey: quizURLKey),
@@ -154,6 +147,7 @@ class ViewController: UITableViewController {
                     self.quizzes = loaded
                     self.resetQuiz()
                     self.refreshControl?.endRefreshing()
+                    self.startAutoRefresh()
                 }
 
             } catch {
@@ -165,14 +159,8 @@ class ViewController: UITableViewController {
         }
 
         task.resume()
-        
-        self.startAutoRefresh()
     }
 
-    deinit {
-        refreshTimer?.invalidate()
-    }
-    
     func showNetworkError() {
         let alert = UIAlertController(
             title: "Network Error",
@@ -182,6 +170,19 @@ class ViewController: UITableViewController {
         alert.addAction(UIAlertAction(title: "OK", style: .default))
         present(alert, animated: true)
     }
+
+    func startAutoRefresh() {
+        refreshTimer?.invalidate()
+
+        let interval = UserDefaults.standard.double(forKey: refreshIntervalKey)
+        guard interval > 0 else { return }
+
+        refreshTimer = Timer.scheduledTimer(withTimeInterval: interval,
+                                            repeats: true) { [weak self] _ in
+            self?.fetchQuizzes()
+        }
+    }
+
 
     override func tableView(_ tableView: UITableView,
                             viewForHeaderInSection section: Int) -> UIView? {
@@ -370,6 +371,7 @@ class ViewController: UITableViewController {
         resetQuiz()
     }
 
+    // MARK: - Gestures
 
     func setupGestures() {
         let right = UISwipeGestureRecognizer(target: self,
@@ -397,7 +399,6 @@ class ViewController: UITableViewController {
             }
         }
     }
-
 
     @objc func checkNowTapped() {
         fetchQuizzes()
